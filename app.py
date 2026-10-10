@@ -332,73 +332,83 @@ else:
 
 
 
+
 def answer_followup(question, last_medicine, df):
-    """Answer factual follow-ups without repeating the full record."""
+    """Answer natural-language factual follow-ups from the dataset."""
 
     if not last_medicine:
         return None
 
-    q = " ".join(
-        question.lower().strip().rstrip("?.! ").split()
-    )
+    # Normalize capitalization, punctuation and whitespace.
+    q = str(question).lower().replace("’", "'")
+    q = re.sub(r"[?.!,]+", " ", q)
+    q = re.sub(r"\s+", " ", q).strip()
+    q = re.sub(r"\s+please$", "", q)
 
-    
-    price_questions = {
-        "price",
-        "the price",
-        "price please",
-        "and the price",
-        "and its price",
-        "what's its price",
-        "what is its price",
-        "what about the price",
-        "how much",
-        "how much is it",
-        "how much does it cost",
-        "what does it cost",
+    patterns = {
+        "price": [
+            r"(?:(?:what is|what's|what are) )?"
+            r"(?:(?:the|its) )?"
+            r"(?:price|prices|pricing|cost)"
+            r"(?: of (?:it|this|that))?",
+
+            r"(?:what about|and|tell me|show me) "
+            r"(?:(?:the|its) )?"
+            r"(?:price|prices|pricing|cost)",
+
+            r"how much(?: is it| does it cost)?",
+            r"what does it cost",
+            r"how expensive is it",
+        ],
+
+        "composition": [
+            r"(?:(?:what is|what's) )?"
+            r"(?:(?:the|its) )?"
+            r"(?:composition|ingredients?)",
+
+            r"(?:what about|and|tell me|show me) "
+            r"(?:(?:the|its) )?"
+            r"(?:composition|ingredients?)",
+
+            r"what does it contain",
+            r"what are its ingredients",
+        ],
+
+        "manufacturer": [
+            r"(?:(?:what is|what's) )?"
+            r"(?:(?:the|its) )?"
+            r"manufacturer",
+
+            r"(?:what about|and) "
+            r"(?:(?:the|its) )?"
+            r"manufacturer",
+
+            r"who (?:makes|manufactures) it",
+            r"who is it made by",
+        ],
+
+        "pack": [
+            r"(?:(?:what is|what's) )?"
+            r"(?:(?:the|its) )?"
+            r"(?:pack|pack size|packaging)",
+
+            r"(?:what about|and) "
+            r"(?:(?:the|its) )?"
+            r"(?:pack|pack size|packaging)",
+
+            r"how many tablets in a pack",
+        ],
     }
 
-    composition_questions = {
-        "composition",
-        "the composition",
-        "ingredients",
-        "its ingredients",
-        "what's its composition",
-        "what is its composition",
-        "what are its ingredients",
-        "what does it contain",
-        "and its composition",
-        "and its ingredients",
-    }
+    intent = None
 
-    manufacturer_questions = {
-        "manufacturer",
-        "the manufacturer",
-        "who makes it",
-        "who manufactures it",
-        "what's its manufacturer",
-        "what is its manufacturer",
-        "and its manufacturer",
-    }
+    for category, expressions in patterns.items():
+        if any(re.fullmatch(p, q) for p in expressions):
+            intent = category
+            break
 
-    pack_questions = {
-        "pack",
-        "pack size",
-        "the pack size",
-        "what's its pack size",
-        "what is its pack size",
-        "and its pack size",
-    }
-
-    if q in price_questions:
-        intent = "price"
-    elif q in composition_questions:
-        intent = "composition"
-    elif q in manufacturer_questions:
-        intent = "manufacturer"
-    elif q in pack_questions:
-        intent = "pack"
-    else:
+    # Unrecognized questions go to the existing MediBot pipeline.
+    if intent is None:
         return None
 
     matches = df[
@@ -410,15 +420,15 @@ def answer_followup(question, last_medicine, df):
 
     medicine = matches.iloc[0]
 
-    # Apply prescription checks before showing any details.
-    restriction = (
+    # Check the stored medicine before revealing details.
+    restricted = (
         check_query(question)
         or check_query(last_medicine)
         or check_medicine(medicine)
     )
 
-    if restriction:
-        return restriction
+    if restricted:
+        return restricted
 
     name = str(medicine["name"])
 
@@ -429,17 +439,17 @@ def answer_followup(question, last_medicine, df):
             return f"No listed price is available for {name}."
 
         return (
-            f"**{name}** has a dataset-listed price of "
-            f"**₹{price:.2f}**."
+            f"**{name}** has a dataset-listed price "
+            f"of **₹{price:.2f}**."
         )
 
     if intent == "composition":
         ingredients = [
             str(medicine[column]).strip()
-            for column in (
+            for column in [
                 "short_composition1",
                 "short_composition2",
-            )
+            ]
             if str(medicine[column]).strip()
         ]
 
@@ -470,6 +480,7 @@ def answer_followup(question, last_medicine, df):
         return f"**{name}** comes in **{pack}**."
 
     return None
+
 
 
 # 6. MEDIBOT CHAT
