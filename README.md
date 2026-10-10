@@ -215,3 +215,14 @@ Additional manual testing covered multi-turn medicine information retrieval, tar
 MediCare is an educational prototype. Its information should not be used as a substitute for medical advice, diagnosis, prescriptions, or professional medication review.
 
 Users should consult qualified healthcare professionals before starting, stopping, or substituting medicines.
+
+## Dataset Attribution
+
+Medicine data sourced from [Indian Medicine Dataset](https://github.com/junioralive/Indian-Medicine-Dataset) by JuniorAlive.
+
+- Records: 253,973
+- Fields: Medicine name, manufacturer, composition, pack size, price and discontinued status.
+- Source repository license: MIT License
+- Prices reflect dataset records, not live pharmacy listings.
+
+The dataset is used for educational and research purposes.
