@@ -7,6 +7,7 @@ import pandas as pd
 from medibot import (
     classify_safety,
     extract_medicine_name,
+    compare_medicines,
     get_response,
 )
 
@@ -15,7 +16,6 @@ class TestMediBot(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # Small synthetic database for predictable tests
         cls.df = pd.DataFrame([
             {
                 "name": "Dolo 650 Tablet",
@@ -168,6 +168,31 @@ class TestMediBot(unittest.TestCase):
         self.assertTrue(
             "cannot" in response.lower()
             or "restricted" in response.lower()
+        )
+
+    def test_comparison_excludes_flagged_alternative(self):
+        source = self.df.iloc[0].copy()
+        flagged = self.df.iloc[1].copy()
+
+        flagged["name"] = "Augmentin Demo 650 Tablet"
+
+        records = pd.DataFrame([source, flagged])
+
+        result = compare_medicines(source, records)
+
+        self.assertNotIn("Augmentin Demo", result)
+        self.assertIn("No other records", result)
+
+    def test_comparison_blocks_flagged_source(self):
+        source = self.df.iloc[0].copy()
+        source["name"] = "Augmentin Demo 650 Tablet"
+
+        result = compare_medicines(source, self.df)
+
+        self.assertEqual(
+            result,
+            "This medication requires a valid prescription. "
+            "Please consult your doctor."
         )
 
 

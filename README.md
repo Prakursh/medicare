@@ -1,3 +1,4 @@
+
 # 💊 MediCare — AI-Powered Pharmacy Information Assistant
 
 MediCare is a conversational pharmacy information assistant built with Python, Streamlit, and OpenRouter.
@@ -119,29 +120,32 @@ The LLM is used primarily to interpret questions. Medicine-specific factual answ
 
 **1. Clone the repository**
 
-`git clone <your-repository-url>`
-
-`cd <repository-folder>`
+```bash
+git clone https://github.com/Prakursh/medicare.git
+cd medicare
+```
 
 **2. Create a virtual environment**
 
-`py -3.12 -m venv .venv`
-
-Activate it in Windows PowerShell:
-
-`.\.venv\Scripts\Activate.ps1`
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
 **3. Install dependencies**
 
-`python -m pip install -r requirements.txt`
+```powershell
+python -m pip install -r requirements.txt
+```
 
 **4. Configure OpenRouter**
 
 Create a `.env` file in the project root containing:
 
-`OPENROUTER_API_KEY=your_openrouter_api_key`
-
-`OPENROUTER_MODEL=openai/gpt-4o-mini`
+```env
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_MODEL=openai/gpt-4o-mini
+```
 
 Never commit your real API key to GitHub.
 
@@ -155,7 +159,9 @@ The application expects columns including `name`, `manufacturer_name`, `short_co
 
 **6. Start the application**
 
-`python -m streamlit run app.py`
+```powershell
+python -m streamlit run app.py
+```
 
 Open the local URL displayed in the terminal.
 
@@ -169,16 +175,17 @@ The project includes automated tests covering:
 - Medicine lookup and response generation.
 - Follow-up question expansion.
 - Handling of selected LLM and API failure scenarios.
+- Restricted-product filtering in composition comparisons.
 
 Run the test suite:
 
-`python -m unittest -v test_medibot.py test_prescription.py test_conversation.py`
+```powershell
+python -m unittest -v test_medibot.py test_prescription.py test_conversation.py
+```
 
-**Latest reported result: 17 tests passed.**
+The updated suite contains **19 tests**. Passing these tests does not establish comprehensive medical or regulatory safety.
 
 Additional manual testing covered multi-turn medicine information retrieval, targeted follow-up answers, composition-based comparisons, and safety responses.
-
-Automated tests do not establish comprehensive medical or regulatory safety.
 
 ## Current Limitations
 
@@ -208,4 +215,3 @@ Automated tests do not establish comprehensive medical or regulatory safety.
 MediCare is an educational prototype. Its information should not be used as a substitute for medical advice, diagnosis, prescriptions, or professional medication review.
 
 Users should consult qualified healthcare professionals before starting, stopping, or substituting medicines.
-

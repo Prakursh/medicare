@@ -1,11 +1,9 @@
+
 from llm_parser import parse_question
 import re
 import pandas as pd
 from rapidfuzz import process, fuzz
-from prescription_guard import (
-    check_query,
-    check_medicine
-)
+from prescription_guard import check_query, check_medicine
 
 
 # ======================================
@@ -81,12 +79,9 @@ PRESCRIPTION_PATTERNS = [
 ]
 
 PERSONAL_MEDICAL_PATTERNS = [
-    # Dosage and medication use
     r"\bhow many\b.{0,50}\b(?:tablets?|pills?|capsules?|doses?)\b",
 
     r"\bhow much\b.{0,55}\b(?:take|use|give|administer|swallow)\b",
-
-   
 
     r"\b(?:what|which)\b.{0,25}"
     r"\b(?:dose|dosage)\b.{0,40}\b(?:take|use|need)\b",
@@ -100,7 +95,6 @@ PERSONAL_MEDICAL_PATTERNS = [
     r"\b(?:how to|tell me how to)\b.{0,35}"
     r"\b(?:take|use|inject|administer)\b",
 
-    # Personal safety
     r"\b(?:safe|okay|ok|suitable)\b.{0,45}"
     r"\b(?:for me|for my|with|during|while)\b",
 
@@ -114,7 +108,6 @@ PERSONAL_MEDICAL_PATTERNS = [
     r"\b(?:my other medicine|my medication|"
     r"other drugs|other tablets)\b",
 
-    # Treatment and diagnosis
     r"\b(?:what|which|recommend|suggest)\b.{0,55}"
     r"\b(?:medicine|medication|drug|treatment)\b"
     r".{0,45}\b(?:for|should i|to treat)\b",
@@ -165,11 +158,10 @@ def matches_any(patterns, text):
 def classify_safety(question):
     q = normalize_text(question)
 
-
     q = re.sub(r"^\[\s*[xX]?\s*\]\s*", "", q)
     q = re.sub(r"^an i\b", "can i", q)
     q = re.sub(r"^gnore\b", "ignore", q)
-    # Emergency detection takes priority
+
     if matches_any(EMERGENCY_PATTERNS, q):
         return "emergency"
 
@@ -230,7 +222,6 @@ def get_intent(question):
 def extract_medicine_name(question):
     name = str(question).strip()
 
-    # Remove copied checklist markers
     name = re.sub(
         r"^\s*\[\s*[xX]?\s*\]\s*", "", name
     )
@@ -261,16 +252,22 @@ def extract_medicine_name(question):
 
     for pattern in patterns:
         updated = re.sub(
-            pattern, "", name,
-            count=1, flags=re.IGNORECASE
+            pattern,
+            "",
+            name,
+            count=1,
+            flags=re.IGNORECASE
         )
+
         if updated != name:
             name = updated
             break
 
     name = re.sub(
         r"\s+(?:cost|price|contain|contains)\??$",
-        "", name, flags=re.IGNORECASE
+        "",
+        name,
+        flags=re.IGNORECASE
     )
 
     return name.strip(" ?.,!")
@@ -373,6 +370,12 @@ def medicine_information(m):
 # ======================================
 
 def compare_medicines(m, df):
+    # Check source medicine before suggesting comparisons.
+    restricted = check_medicine(m)
+
+    if restricted:
+        return restricted
+
     if not str(m["short_composition1"]).strip():
         return "Composition data is insufficient."
 
@@ -394,6 +397,15 @@ def compare_medicines(m, df):
         & (df["price_numeric"] > 0)
         & (df["name"] != m["name"])
     ].sort_values("price_numeric")
+
+    # Apply the same prescription guard used by the UI.
+    if not matches.empty:
+        matches = matches.loc[
+            ~matches.apply(
+                lambda row: bool(check_medicine(row)),
+                axis=1
+            )
+        ]
 
     if matches.empty:
         return (
@@ -430,7 +442,6 @@ def compare_medicines(m, df):
 # 8. MAIN CHATBOT PIPELINE
 # ======================================
 
-
 def get_response(question, df):
     question = str(question).strip()
 
@@ -441,14 +452,13 @@ def get_response(question, df):
 
     if restricted:
         return restricted
-    # STEP 1: Local safety checks
-    # These run BEFORE calling OpenRouter.
+
+    # Apply local safety checks before calling OpenRouter.
     safety = safety_check(question)
 
     if safety is not None:
         return safety
 
-    # STEP 2: Handle greetings
     if normalize_text(question) in ["hi", "hello", "hey"]:
         return (
             "Hello! I'm MediBot. I can help you find "
@@ -456,16 +466,13 @@ def get_response(question, df):
             "manufacturers, and listed prices."
         )
 
-    # STEP 3: Send question to OpenRouter
     parsed = parse_question(question)
 
     if parsed is not None:
-
         category = parsed["category"]
         intent = parsed["intent"]
         medicine_name = parsed["medicine_name"]
 
-        # STEP 4: Apply LLM safety classification
         if category in SAFETY_MESSAGES:
             return SAFETY_MESSAGES[category]
 
@@ -479,9 +486,7 @@ def get_response(question, df):
             )
 
     else:
-        # STEP 5: Safe fallback if OpenRouter fails
-        # Only allow basic database lookups.
-
+        # Conservative fallback when OpenRouter is unavailable.
         q = normalize_text(question)
 
         exact_name = (df["name_search"] == q).any()
@@ -491,7 +496,6 @@ def get_response(question, df):
             intent = "information"
 
         else:
-            # Strictly recognized lookup question formats
             patterns = [
                 r"^what is (?:the )?price of\s+",
                 r"^what is (?:the )?cost of\s+",
@@ -501,8 +505,6 @@ def get_response(question, df):
                 r"^find cheaper composition matches for\s+",
                 r"^tell me about\s+",
             ]
-
-            import re
 
             if not any(re.match(p, q) for p in patterns):
                 return (
@@ -515,13 +517,9 @@ def get_response(question, df):
             medicine_name = extract_medicine_name(question)
             intent = get_intent(question)
 
-    # STEP 6: Check extracted medicine name
     if not medicine_name:
-        return (
-            "Please provide the complete medicine name."
-        )
+        return "Please provide the complete medicine name."
 
-    # STEP 7: Search local medicine database
     medicine, suggestions = find_medicine(
         medicine_name, df
     )
@@ -533,7 +531,6 @@ def get_response(question, df):
             return restricted
 
     if medicine is None:
-
         if suggestions:
             formatted = "\n".join(
                 f"- {name}" for name in suggestions
@@ -549,9 +546,6 @@ def get_response(question, df):
             "I couldn't find that medicine in the "
             "local database. Please check its name."
         )
-
-    # STEP 8: Generate answer from database
-    # OpenRouter does NOT invent medicine facts.
 
     if intent == "compare":
         return compare_medicines(medicine, df)
