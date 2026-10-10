@@ -342,32 +342,51 @@ def answer_followup(question, last_medicine, df):
         question.lower().strip().rstrip("?.! ").split()
     )
 
+    
     price_questions = {
+        "price",
+        "the price",
+        "price please",
+        "and the price",
+        "and its price",
         "what's its price",
         "what is its price",
+        "what about the price",
+        "how much",
+        "how much is it",
         "how much does it cost",
-        "and its price",
+        "what does it cost",
     }
 
     composition_questions = {
-        "what is its composition",
+        "composition",
+        "the composition",
+        "ingredients",
+        "its ingredients",
         "what's its composition",
+        "what is its composition",
         "what are its ingredients",
+        "what does it contain",
         "and its composition",
         "and its ingredients",
     }
 
     manufacturer_questions = {
-        "who manufactures it",
+        "manufacturer",
+        "the manufacturer",
         "who makes it",
-        "what is its manufacturer",
+        "who manufactures it",
         "what's its manufacturer",
+        "what is its manufacturer",
         "and its manufacturer",
     }
 
     pack_questions = {
-        "what is its pack size",
+        "pack",
+        "pack size",
+        "the pack size",
         "what's its pack size",
+        "what is its pack size",
         "and its pack size",
     }
 
